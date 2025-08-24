@@ -64,7 +64,7 @@ async def start(message: types.Message):
         [InlineKeyboardButton(text="Support", url="https://t.me/Legitplaysonly")]
     ])
     user_balance = USERS[user_id]["balance"]
-    
+
     if is_admin(user_id):
         # Admin panel
         admin_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -73,7 +73,8 @@ async def start(message: types.Message):
             [InlineKeyboardButton(text="📊 Analytics", callback_data="admin_analytics"),
              InlineKeyboardButton(text="👤 User List", callback_data="admin_users")],
             [InlineKeyboardButton(text="🛍️ Manage Products", callback_data="admin_products"),
-             InlineKeyboardButton(text="🛒 Regular Shop", callback_data="regular_shop")]
+             InlineKeyboardButton(text="💳 Funding", callback_data="admin_funding")],
+            [InlineKeyboardButton(text="🛒 Regular Shop", callback_data="regular_shop")]
         ])
         await message.answer(f"🔧 <b>Admin Panel</b>\n\nWelcome, Administrator!\n💰 Your Balance: ${user_balance}", reply_markup=admin_kb)
     else:
@@ -82,7 +83,7 @@ async def start(message: types.Message):
 # ----------------------------
 # CALLBACK HANDLERS
 # ----------------------------
-@dp.callback_query(F.data.in_(["view_products", "deposit", "history", "admin_stats", "admin_revenue", "admin_analytics", "admin_users", "regular_shop", "back_to_admin", "admin_products", "admin_add_product", "admin_edit_product", "admin_delete_product"]))
+@dp.callback_query(F.data.in_(["view_products", "deposit", "history", "admin_stats", "admin_revenue", "admin_analytics", "admin_users", "regular_shop", "back_to_admin", "admin_products", "admin_add_product", "admin_edit_product", "admin_delete_product", "admin_funding"]))
 async def callbacks(call: types.CallbackQuery):
     user_id = call.from_user.id
     if user_id not in USERS:
@@ -211,6 +212,34 @@ async def callbacks(call: types.CallbackQuery):
             products_text += "\nTo delete, send: DELETE:ProductIndex\nExample: DELETE:0"
             await call.message.answer(products_text)
 
+    elif call.data == "admin_funding" and is_admin(user_id):
+        funding_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="➕ Add Funds", callback_data="admin_add_funds"),
+             InlineKeyboardButton(text="➖ Remove Funds", callback_data="admin_remove_funds")],
+            [InlineKeyboardButton(text="📊 View Funding Stats", callback_data="admin_funding_stats")],
+            [InlineKeyboardButton(text="🔙 Back to Admin Panel", callback_data="back_to_admin")]
+        ])
+        await call.message.answer("💳 <b>Funding Management</b>", reply_markup=funding_kb)
+
+    elif call.data == "admin_add_funds" and is_admin(user_id):
+        await call.message.answer("➕ <b>Add Funds to User</b>\n\nSend in format: ADD_FUNDS:UserID:Amount\nExample: ADD_FUNDS:123456789:50")
+
+    elif call.data == "admin_remove_funds" and is_admin(user_id):
+        await call.message.answer("➖ <b>Remove Funds from User</b>\n\nSend in format: REMOVE_FUNDS:UserID:Amount\nExample: REMOVE_FUNDS:123456789:25")
+
+    elif call.data == "admin_funding_stats" and is_admin(user_id):
+        if not USERS:
+            await call.message.answer("No user data available for funding stats.")
+        else:
+            total_funded = sum(user_data["balance"] for user_data in USERS.values())
+            active_funding_users = len([u for u in USERS.values() if u["balance"] > 0])
+            
+            funding_stats_text = f"📊 <b>Funding Statistics</b>\n\n"
+            funding_stats_text += f"💰 Total Funds Distributed: ${total_funded}\n"
+            funding_stats_text += f"👤 Users with Funds: {active_funding_users}\n"
+            
+            await call.message.answer(funding_stats_text)
+
     elif call.data == "regular_shop" and is_admin(user_id):
         # Show regular shop interface for admin
         kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -228,7 +257,8 @@ async def callbacks(call: types.CallbackQuery):
             [InlineKeyboardButton(text="📊 Analytics", callback_data="admin_analytics"),
              InlineKeyboardButton(text="👤 User List", callback_data="admin_users")],
             [InlineKeyboardButton(text="🛍️ Manage Products", callback_data="admin_products"),
-             InlineKeyboardButton(text="🛒 Regular Shop", callback_data="regular_shop")]
+             InlineKeyboardButton(text="💳 Funding", callback_data="admin_funding")],
+            [InlineKeyboardButton(text="🛒 Regular Shop", callback_data="regular_shop")]
         ])
         await call.message.answer("🔧 <b>Admin Panel</b>", reply_markup=admin_kb)
 
@@ -259,23 +289,23 @@ async def handle_add_product(message: types.Message):
     user_id = message.from_user.id
     if not is_admin(user_id):
         return
-    
+
     try:
         parts = message.text.split(":")
         if len(parts) != 3:
             await message.reply("❌ Invalid format. Use: ADD:Product Name:Price")
             return
-        
+
         product_name = parts[1].strip()
         product_price = int(parts[2].strip())
-        
+
         if product_price <= 0:
             await message.reply("❌ Price must be greater than 0.")
             return
-        
+
         PRODUCTS.append({"name": product_name, "price": product_price})
         await message.reply(f"✅ Product '{product_name}' added successfully for ${product_price}!")
-        
+
     except ValueError:
         await message.reply("❌ Invalid price. Please enter a valid number.")
     except Exception as e:
@@ -286,29 +316,29 @@ async def handle_edit_product(message: types.Message):
     user_id = message.from_user.id
     if not is_admin(user_id):
         return
-    
+
     try:
         parts = message.text.split(":")
         if len(parts) != 4:
             await message.reply("❌ Invalid format. Use: EDIT:ProductIndex:NewName:NewPrice")
             return
-        
+
         product_index = int(parts[1].strip())
         new_name = parts[2].strip()
         new_price = int(parts[3].strip())
-        
+
         if product_index < 0 or product_index >= len(PRODUCTS):
             await message.reply(f"❌ Invalid product index. Choose between 0 and {len(PRODUCTS)-1}.")
             return
-        
+
         if new_price <= 0:
             await message.reply("❌ Price must be greater than 0.")
             return
-        
+
         old_product = PRODUCTS[product_index]
         PRODUCTS[product_index] = {"name": new_name, "price": new_price}
         await message.reply(f"✅ Product updated!\nOld: {old_product['name']} - ${old_product['price']}\nNew: {new_name} - ${new_price}")
-        
+
     except (ValueError, IndexError):
         await message.reply("❌ Invalid format or index. Use: EDIT:ProductIndex:NewName:NewPrice")
     except Exception as e:
@@ -319,26 +349,97 @@ async def handle_delete_product(message: types.Message):
     user_id = message.from_user.id
     if not is_admin(user_id):
         return
-    
+
     try:
         parts = message.text.split(":")
         if len(parts) != 2:
             await message.reply("❌ Invalid format. Use: DELETE:ProductIndex")
             return
-        
+
         product_index = int(parts[1].strip())
-        
+
         if product_index < 0 or product_index >= len(PRODUCTS):
             await message.reply(f"❌ Invalid product index. Choose between 0 and {len(PRODUCTS)-1}.")
             return
-        
+
         deleted_product = PRODUCTS.pop(product_index)
         await message.reply(f"✅ Product '{deleted_product['name']}' deleted successfully!")
-        
+
     except (ValueError, IndexError):
         await message.reply("❌ Invalid format or index. Use: DELETE:ProductIndex")
     except Exception as e:
         await message.reply(f"❌ Error deleting product: {e}")
+
+# ----------------------------
+# MESSAGE HANDLERS FOR ADMIN FUNDING MANAGEMENT
+# ----------------------------
+@dp.message(F.text.startswith("ADD_FUNDS:"))
+async def handle_add_funds(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        return
+
+    try:
+        parts = message.text.split(":")
+        if len(parts) != 3:
+            await message.reply("❌ Invalid format. Use: ADD_FUNDS:UserID:Amount")
+            return
+        
+        target_user_id = int(parts[1].strip())
+        amount = int(parts[2].strip())
+
+        if amount <= 0:
+            await message.reply("❌ Amount must be positive.")
+            return
+        
+        if target_user_id not in USERS:
+            USERS[target_user_id] = {"balance": 0, "history": []}
+        
+        USERS[target_user_id]["balance"] += amount
+        USERS[target_user_id]["history"].append(f"Admin added ${amount} to your balance.")
+        await message.reply(f"✅ Added ${amount} to user {target_user_id}'s balance. New balance: ${USERS[target_user_id]['balance']}")
+
+    except ValueError:
+        await message.reply("❌ Invalid User ID or Amount. Please use numbers.")
+    except Exception as e:
+        await message.reply(f"❌ Error adding funds: {e}")
+
+@dp.message(F.text.startswith("REMOVE_FUNDS:"))
+async def handle_remove_funds(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        return
+
+    try:
+        parts = message.text.split(":")
+        if len(parts) != 3:
+            await message.reply("❌ Invalid format. Use: REMOVE_FUNDS:UserID:Amount")
+            return
+        
+        target_user_id = int(parts[1].strip())
+        amount = int(parts[2].strip())
+
+        if amount <= 0:
+            await message.reply("❌ Amount must be positive.")
+            return
+        
+        if target_user_id not in USERS:
+            await message.reply("❌ User not found.")
+            return
+        
+        if USERS[target_user_id]["balance"] < amount:
+            await message.reply("❌ Insufficient balance to remove funds.")
+            return
+        
+        USERS[target_user_id]["balance"] -= amount
+        USERS[target_user_id]["history"].append(f"Admin removed ${amount} from your balance.")
+        await message.reply(f"✅ Removed ${amount} from user {target_user_id}'s balance. New balance: ${USERS[target_user_id]['balance']}")
+
+    except ValueError:
+        await message.reply("❌ Invalid User ID or Amount. Please use numbers.")
+    except Exception as e:
+        await message.reply(f"❌ Error removing funds: {e}")
+
 
 # ----------------------------
 # MESSAGE HANDLER FOR DEPOSITS

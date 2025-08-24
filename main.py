@@ -11,7 +11,7 @@ from aiogram.client.default import DefaultBotProperties
 # ----------------------------
 # CONFIGURATION
 # ----------------------------
-API_TOKEN = "8314185541:AAFDFgYP5CHLA8HVwvJBjcz0iXquepM2VWc"
+API_TOKEN = "8381487948:AAGG-qKTm0NT359WZMm-CEvFpwycEThCRsM"
 NOWPAYMENTS_API_KEY = "WEP7ZF7-MJ44V90-G433PT9-HGDER2Q"
 IPN_URL = "https://your-repl-url.repl.co/ipn"  # Replace with your actual Repl URL
 

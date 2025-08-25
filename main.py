@@ -96,21 +96,27 @@ async def callbacks(call: types.CallbackQuery):
         USERS[user_id] = {"balance": 0, "history": []}
 
     if call.data == "view_products":
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=f"{prod['name']} - ${prod['price']}", callback_data=f"buy_{idx}")]
-            for idx, prod in enumerate(PRODUCTS)
-        ])
+        buttons = [[InlineKeyboardButton(text=f"{prod['name']} - ${prod['price']}", callback_data=f"buy_{idx}")]
+                  for idx, prod in enumerate(PRODUCTS)]
+        buttons.append([InlineKeyboardButton(text="🔙 Back to Menu", callback_data="back_to_menu")])
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
         await call.message.answer("Available Products:", reply_markup=kb)
 
     elif call.data == "history":
         history = USERS[user_id]["history"]
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Back to Menu", callback_data="back_to_menu")]
+        ])
         if not history:
-            await call.message.answer("No purchase history yet.")
+            await call.message.answer("No purchase history yet.", reply_markup=back_kb)
         else:
-            await call.message.answer("\n".join(history))
+            await call.message.answer("\n".join(history), reply_markup=back_kb)
 
     elif call.data == "deposit":
-        await call.message.answer(f"Minimum deposit: ${MIN_DEPOSIT}\nSend the amount in USD.")
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Back to Menu", callback_data="back_to_menu")]
+        ])
+        await call.message.answer(f"Minimum deposit: ${MIN_DEPOSIT}\nSend the amount in USD.", reply_markup=back_kb)
 
     # Admin Panel Callbacks
     elif call.data == "admin_stats" and is_admin(user_id):
@@ -123,7 +129,10 @@ async def callbacks(call: types.CallbackQuery):
         stats_text += f"💰 Total Balance: ${total_balance}\n"
         stats_text += f"🔥 Active Users: {active_users}\n"
 
-        await call.message.answer(stats_text)
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Back to Admin Panel", callback_data="back_to_admin")]
+        ])
+        await call.message.answer(stats_text, reply_markup=back_kb)
 
     elif call.data == "admin_revenue" and is_admin(user_id):
         total_spent = 0
@@ -145,7 +154,10 @@ async def callbacks(call: types.CallbackQuery):
         revenue_text += f"💵 Total Revenue: ${total_spent}\n"
         revenue_text += f"🛒 Products Sold: {sum(len([h for h in u['history'] if 'Bought' in h]) for u in USERS.values())}\n"
 
-        await call.message.answer(revenue_text)
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Back to Admin Panel", callback_data="back_to_admin")]
+        ])
+        await call.message.answer(revenue_text, reply_markup=back_kb)
 
     elif call.data == "admin_analytics" and is_admin(user_id):
         if not USERS:
@@ -170,7 +182,10 @@ async def callbacks(call: types.CallbackQuery):
             analytics_text += f"🔝 Highest Balance: ${max_balance}\n"
             analytics_text += f"🏆 Most Popular Product: {most_popular[0]} ({most_popular[1]} sales)\n"
 
-            await call.message.answer(analytics_text)
+            back_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Back to Admin Panel", callback_data="back_to_admin")]
+            ])
+            await call.message.answer(analytics_text, reply_markup=back_kb)
 
     elif call.data == "admin_users" and is_admin(user_id):
         if not USERS:
@@ -183,7 +198,10 @@ async def callbacks(call: types.CallbackQuery):
             if len(USERS) > 10:
                 users_text += f"\n... and {len(USERS) - 10} more users"
 
-            await call.message.answer(users_text)
+            back_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Back to Admin Panel", callback_data="back_to_admin")]
+            ])
+            await call.message.answer(users_text, reply_markup=back_kb)
 
     elif call.data == "admin_products" and is_admin(user_id):
         # Product management interface
@@ -196,7 +214,10 @@ async def callbacks(call: types.CallbackQuery):
         await call.message.answer("🛍️ <b>Product Management</b>", reply_markup=product_kb)
 
     elif call.data == "admin_add_product" and is_admin(user_id):
-        await call.message.answer("➕ <b>Add New Product</b>\n\nSend product details in this format:\nADD:Product Name:Price\n\nExample: ADD:Premium Account:30")
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Back to Product Management", callback_data="admin_products")]
+        ])
+        await call.message.answer("➕ <b>Add New Product</b>\n\nSend product details in this format:\nADD:Product Name:Price\n\nExample: ADD:Premium Account:30", reply_markup=back_kb)
 
     elif call.data == "admin_edit_product" and is_admin(user_id):
         if not PRODUCTS:
@@ -206,7 +227,10 @@ async def callbacks(call: types.CallbackQuery):
             for idx, prod in enumerate(PRODUCTS):
                 products_text += f"{idx}. {prod['name']} - ${prod['price']}\n"
             products_text += "\nTo edit, send: EDIT:ProductIndex:NewName:NewPrice\nExample: EDIT:0:New Product Name:25"
-            await call.message.answer(products_text)
+            back_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Back to Product Management", callback_data="admin_products")]
+            ])
+            await call.message.answer(products_text, reply_markup=back_kb)
 
     elif call.data == "admin_delete_product" and is_admin(user_id):
         if not PRODUCTS:
@@ -216,7 +240,10 @@ async def callbacks(call: types.CallbackQuery):
             for idx, prod in enumerate(PRODUCTS):
                 products_text += f"{idx}. {prod['name']} - ${prod['price']}\n"
             products_text += "\nTo delete, send: DELETE:ProductIndex\nExample: DELETE:0"
-            await call.message.answer(products_text)
+            back_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Back to Product Management", callback_data="admin_products")]
+            ])
+            await call.message.answer(products_text, reply_markup=back_kb)
 
     elif call.data == "admin_funding" and is_admin(user_id):
         funding_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -228,10 +255,16 @@ async def callbacks(call: types.CallbackQuery):
         await call.message.answer("💳 <b>Funding Management</b>", reply_markup=funding_kb)
 
     elif call.data == "admin_add_funds" and is_admin(user_id):
-        await call.message.answer("➕ <b>Add Funds to User</b>\n\nSend in format: ADD_FUNDS:UserID:Amount\nExample: ADD_FUNDS:123456789:50")
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Back to Funding Management", callback_data="admin_funding")]
+        ])
+        await call.message.answer("➕ <b>Add Funds to User</b>\n\nSend in format: ADD_FUNDS:UserID:Amount\nExample: ADD_FUNDS:123456789:50", reply_markup=back_kb)
 
     elif call.data == "admin_remove_funds" and is_admin(user_id):
-        await call.message.answer("➖ <b>Remove Funds from User</b>\n\nSend in format: REMOVE_FUNDS:UserID:Amount\nExample: REMOVE_FUNDS:123456789:25")
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Back to Funding Management", callback_data="admin_funding")]
+        ])
+        await call.message.answer("➖ <b>Remove Funds from User</b>\n\nSend in format: REMOVE_FUNDS:UserID:Amount\nExample: REMOVE_FUNDS:123456789:25", reply_markup=back_kb)
 
     elif call.data == "admin_funding_stats" and is_admin(user_id):
         if not USERS:
@@ -244,7 +277,10 @@ async def callbacks(call: types.CallbackQuery):
             funding_stats_text += f"💰 Total Funds Distributed: ${total_funded}\n"
             funding_stats_text += f"👤 Users with Funds: {active_funding_users}\n"
 
-            await call.message.answer(funding_stats_text)
+            back_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Back to Funding Management", callback_data="admin_funding")]
+            ])
+            await call.message.answer(funding_stats_text, reply_markup=back_kb)
 
     elif call.data == "admin_shipping" and is_admin(user_id):
         # Placeholder for shipping address management

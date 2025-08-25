@@ -89,7 +89,7 @@ async def start(message: types.Message):
 # ----------------------------
 # CALLBACK HANDLERS
 # ----------------------------
-@dp.callback_query(F.data.in_(["view_products", "deposit", "history", "admin_stats", "admin_revenue", "admin_analytics", "admin_users", "regular_shop", "back_to_admin", "admin_products", "admin_add_product", "admin_edit_product", "admin_delete_product", "admin_funding", "admin_add_funds", "admin_remove_funds", "admin_funding_stats", "admin_shipping"]))
+@dp.callback_query(F.data.in_(["view_products", "deposit", "history", "admin_stats", "admin_revenue", "admin_analytics", "admin_users", "regular_shop", "back_to_admin", "admin_products", "admin_add_product", "admin_edit_product", "admin_delete_product", "admin_funding", "admin_add_funds", "admin_remove_funds", "admin_funding_stats", "admin_shipping", "back_to_menu"]))
 async def callbacks(call: types.CallbackQuery):
     user_id = call.from_user.id
     if user_id not in USERS:
@@ -279,6 +279,31 @@ async def callbacks(call: types.CallbackQuery):
         ])
         await call.message.answer("🔧 <b>Admin Panel</b>", reply_markup=admin_kb)
 
+    elif call.data == "back_to_menu":
+        # Return to main menu based on user type
+        user_balance = USERS[user_id]["balance"]
+        
+        if is_admin(user_id):
+            admin_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="👥 User Stats", callback_data="admin_stats"),
+                 InlineKeyboardButton(text="💰 Revenue", callback_data="admin_revenue")],
+                [InlineKeyboardButton(text="📊 Analytics", callback_data="admin_analytics"),
+                 InlineKeyboardButton(text="👤 User List", callback_data="admin_users")],
+                [InlineKeyboardButton(text="🛍️ Manage Products", callback_data="admin_products"),
+                 InlineKeyboardButton(text="💳 Funding", callback_data="admin_funding")],
+                [InlineKeyboardButton(text="📦 Shipping Addresses", callback_data="admin_shipping"),
+                 InlineKeyboardButton(text="🛒 Regular Shop", callback_data="regular_shop")]
+            ])
+            await call.message.answer(f"🔧 <b>Admin Panel</b>\n\nWelcome, Administrator!\n💰 Your Balance: ${user_balance}", reply_markup=admin_kb)
+        else:
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="View Products", callback_data="view_products"),
+                 InlineKeyboardButton(text="Deposit", callback_data="deposit")],
+                [InlineKeyboardButton(text="Purchase History", callback_data="history")],
+                [InlineKeyboardButton(text="Support", url="https://t.me/Legitplaysonly")]
+            ])
+            await call.message.answer(f"Welcome to the Canabis Shop!\n💰 Your Balance: ${user_balance}", reply_markup=kb)
+
     await call.answer()
 
 @dp.callback_query(F.data.startswith("buy_"))
@@ -295,7 +320,8 @@ async def buy_product(call: types.CallbackQuery):
         await call.message.answer(f"You bought {product['name']}! Remaining balance: ${USERS[user_id]['balance']}")
         # After successful purchase, prompt for shipping address
         shipping_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Submit Shipping Address", callback_data=f"submit_shipping_{product['name']}")]
+            [InlineKeyboardButton(text="Submit Shipping Address", callback_data=f"submit_shipping_{product['name']}")],
+            [InlineKeyboardButton(text="🔙 Back to Menu", callback_data="back_to_menu")]
         ])
         await call.message.answer("Please submit your shipping address for this order:", reply_markup=shipping_kb)
     else:
@@ -309,7 +335,10 @@ async def buy_product(call: types.CallbackQuery):
 @dp.callback_query(F.data.startswith("submit_shipping_"))
 async def handle_submit_shipping_prompt(call: types.CallbackQuery):
     product_name = call.data.split("_")[2]
-    await call.message.answer(f"Please provide your shipping address for the '{product_name}' order.\n\nSend it in the format: SHIPPING:Your Full Name:Street Address:City:State/Province:Postal Code:Country")
+    back_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Back to Menu", callback_data="back_to_menu")]
+    ])
+    await call.message.answer(f"Please provide your shipping address for the '{product_name}' order.\n\nSend it in the format: SHIPPING:Your Full Name:Street Address:City:State/Province:Postal Code:Country", reply_markup=back_kb)
 
 @dp.message(F.text.startswith("SHIPPING:"))
 async def handle_shipping_address(message: types.Message):

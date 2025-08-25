@@ -78,7 +78,7 @@ async def start(message: types.Message):
         ])
         await message.answer(f"🔧 <b>Admin Panel</b>\n\nWelcome, Administrator!\n💰 Your Balance: ${user_balance}", reply_markup=admin_kb)
     else:
-        await message.answer(f"Welcome to the Prepaids Shop!\n💰 Your Balance: ${user_balance}", reply_markup=kb)
+        await message.answer(f"Welcome to the Canabis Shop!\n💰 Your Balance: ${user_balance}", reply_markup=kb)
 
 # ----------------------------
 # CALLBACK HANDLERS

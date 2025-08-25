@@ -33,6 +33,7 @@ dp = Dispatcher()
 
 # Dummy products
 PRODUCTS = [
+    {"name": "Qz", "price": 60},
     {"name": "OZ", "price": 110},
     {"name": "QP", "price": 150},
     {"name": "Hp", "price": 300},

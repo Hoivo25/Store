@@ -33,9 +33,14 @@ dp = Dispatcher()
 
 # Dummy products
 PRODUCTS = [
-    {"name": "Qz", "price": 60},
-    {"name": "Qp", "price": 120},
-    {"name": "Hp", "price": 200},
+    {"name": "OZ", "price": 110},
+    {"name": "QP", "price": 150},
+    {"name": "Hp", "price": 300},
+    {"name": "1p", "price": 650},
+    {"name": "2p", "price": 1250},
+    {"name": "3p", "price": 1800},
+    {"name": "4p", "price": 2600},
+    {"name": "5p", "price": 3150},
 ]
 
 # In-memory storage

@@ -79,7 +79,8 @@ async def start(message: types.Message):
              InlineKeyboardButton(text="👤 User List", callback_data="admin_users")],
             [InlineKeyboardButton(text="🛍️ Manage Products", callback_data="admin_products"),
              InlineKeyboardButton(text="💳 Funding", callback_data="admin_funding")],
-            [InlineKeyboardButton(text="🛒 Regular Shop", callback_data="regular_shop")]
+            [InlineKeyboardButton(text="📦 Shipping Addresses", callback_data="admin_shipping"),
+             InlineKeyboardButton(text="🛒 Regular Shop", callback_data="regular_shop")]
         ])
         await message.answer(f"🔧 <b>Admin Panel</b>\n\nWelcome, Administrator!\n💰 Your Balance: ${user_balance}", reply_markup=admin_kb)
     else:
@@ -88,7 +89,7 @@ async def start(message: types.Message):
 # ----------------------------
 # CALLBACK HANDLERS
 # ----------------------------
-@dp.callback_query(F.data.in_(["view_products", "deposit", "history", "admin_stats", "admin_revenue", "admin_analytics", "admin_users", "regular_shop", "back_to_admin", "admin_products", "admin_add_product", "admin_edit_product", "admin_delete_product", "admin_funding", "admin_add_funds", "admin_remove_funds", "admin_funding_stats"]))
+@dp.callback_query(F.data.in_(["view_products", "deposit", "history", "admin_stats", "admin_revenue", "admin_analytics", "admin_users", "regular_shop", "back_to_admin", "admin_products", "admin_add_product", "admin_edit_product", "admin_delete_product", "admin_funding", "admin_add_funds", "admin_remove_funds", "admin_funding_stats", "admin_shipping"]))
 async def callbacks(call: types.CallbackQuery):
     user_id = call.from_user.id
     if user_id not in USERS:
@@ -238,12 +239,22 @@ async def callbacks(call: types.CallbackQuery):
         else:
             total_funded = sum(user_data["balance"] for user_data in USERS.values())
             active_funding_users = len([u for u in USERS.values() if u["balance"] > 0])
-            
+
             funding_stats_text = f"📊 <b>Funding Statistics</b>\n\n"
             funding_stats_text += f"💰 Total Funds Distributed: ${total_funded}\n"
             funding_stats_text += f"👤 Users with Funds: {active_funding_users}\n"
-            
+
             await call.message.answer(funding_stats_text)
+
+    elif call.data == "admin_shipping" and is_admin(user_id):
+        # Placeholder for shipping address management
+        # In a real application, you would fetch and display shipping addresses here.
+        # For now, we'll just provide a message and a way back.
+        shipping_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Back to Admin Panel", callback_data="back_to_admin")]
+        ])
+        await call.message.answer("📦 <b>Shipping Addresses</b>\n\nShipping address management will be implemented here.", reply_markup=shipping_kb)
+
 
     elif call.data == "regular_shop" and is_admin(user_id):
         # Show regular shop interface for admin
@@ -263,7 +274,8 @@ async def callbacks(call: types.CallbackQuery):
              InlineKeyboardButton(text="👤 User List", callback_data="admin_users")],
             [InlineKeyboardButton(text="🛍️ Manage Products", callback_data="admin_products"),
              InlineKeyboardButton(text="💳 Funding", callback_data="admin_funding")],
-            [InlineKeyboardButton(text="🛒 Regular Shop", callback_data="regular_shop")]
+            [InlineKeyboardButton(text="📦 Shipping Addresses", callback_data="admin_shipping"),
+             InlineKeyboardButton(text="🛒 Regular Shop", callback_data="regular_shop")]
         ])
         await call.message.answer("🔧 <b>Admin Panel</b>", reply_markup=admin_kb)
 
@@ -281,10 +293,53 @@ async def buy_product(call: types.CallbackQuery):
         USERS[user_id]["balance"] -= product["price"]
         USERS[user_id]["history"].append(f"Bought {product['name']} for ${product['price']}")
         await call.message.answer(f"You bought {product['name']}! Remaining balance: ${USERS[user_id]['balance']}")
+        # After successful purchase, prompt for shipping address
+        shipping_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Submit Shipping Address", callback_data=f"submit_shipping_{product['name']}")]
+        ])
+        await call.message.answer("Please submit your shipping address for this order:", reply_markup=shipping_kb)
     else:
         await call.message.answer(f"Not enough balance. Please deposit at least ${product['price'] - USERS[user_id]['balance']} more.")
 
     await call.answer()
+
+# ----------------------------
+# MESSAGE HANDLERS FOR SHIPPING ADDRESS
+# ----------------------------
+@dp.callback_query(F.data.startswith("submit_shipping_"))
+async def handle_submit_shipping_prompt(call: types.CallbackQuery):
+    product_name = call.data.split("_")[2]
+    await call.message.answer(f"Please provide your shipping address for the '{product_name}' order.\n\nSend it in the format: SHIPPING:Your Full Name:Street Address:City:State/Province:Postal Code:Country")
+
+@dp.message(F.text.startswith("SHIPPING:"))
+async def handle_shipping_address(message: types.Message):
+    user_id = message.from_user.id
+    try:
+        parts = message.text.split(":")
+        if len(parts) != 7:
+            await message.reply("❌ Invalid format. Use: SHIPPING:Your Full Name:Street Address:City:State/Province:Postal Code:Country")
+            return
+
+        full_name = parts[1].strip()
+        street_address = parts[2].strip()
+        city = parts[3].strip()
+        state_province = parts[4].strip()
+        postal_code = parts[5].strip()
+        country = parts[6].strip()
+
+        # Store shipping address (e.g., associate with the last purchase or a specific order ID)
+        # For simplicity, we'll just log it here and indicate it's stored.
+        # In a real scenario, you'd want to link this to an order.
+        logging.info(f"Shipping address received from {user_id}: {full_name}, {street_address}, {city}, {state_province}, {postal_code}, {country}")
+
+        # You might want to store this in a more structured way, e.g., USERS[user_id]['shipping_addresses'].append(...)
+        # For now, we'll just acknowledge receipt.
+
+        await message.reply("✅ Shipping address received successfully! We will process your order.")
+
+    except Exception as e:
+        await message.reply(f"❌ Error processing shipping address: {e}")
+
 
 # ----------------------------
 # MESSAGE HANDLERS FOR ADMIN PRODUCT MANAGEMENT
@@ -389,17 +444,17 @@ async def handle_add_funds(message: types.Message):
         if len(parts) != 3:
             await message.reply("❌ Invalid format. Use: ADD_FUNDS:UserID:Amount")
             return
-        
+
         target_user_id = int(parts[1].strip())
         amount = int(parts[2].strip())
 
         if amount <= 0:
             await message.reply("❌ Amount must be positive.")
             return
-        
+
         if target_user_id not in USERS:
             USERS[target_user_id] = {"balance": 0, "history": []}
-        
+
         USERS[target_user_id]["balance"] += amount
         USERS[target_user_id]["history"].append(f"Admin added ${amount} to your balance.")
         await message.reply(f"✅ Added ${amount} to user {target_user_id}'s balance. New balance: ${USERS[target_user_id]['balance']}")
@@ -420,22 +475,22 @@ async def handle_remove_funds(message: types.Message):
         if len(parts) != 3:
             await message.reply("❌ Invalid format. Use: REMOVE_FUNDS:UserID:Amount")
             return
-        
+
         target_user_id = int(parts[1].strip())
         amount = int(parts[2].strip())
 
         if amount <= 0:
             await message.reply("❌ Amount must be positive.")
             return
-        
+
         if target_user_id not in USERS:
             await message.reply("❌ User not found.")
             return
-        
+
         if USERS[target_user_id]["balance"] < amount:
             await message.reply("❌ Insufficient balance to remove funds.")
             return
-        
+
         USERS[target_user_id]["balance"] -= amount
         USERS[target_user_id]["history"].append(f"Admin removed ${amount} from your balance.")
         await message.reply(f"✅ Removed ${amount} from user {target_user_id}'s balance. New balance: ${USERS[target_user_id]['balance']}")
